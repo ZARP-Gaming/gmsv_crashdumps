@@ -46,7 +46,7 @@ jobs:
           msbuild .\projects\windows\vs2022\betterclienterrors.sln /p:Configuration=Release /p:Platform=x64
 
       - name: Save Built DLL for Download
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: gmsv_betterclienterrors_win64
           path: .\projects\windows\vs2022\x86_64\Release\gmsv_betterclienterrors_win64.dll
