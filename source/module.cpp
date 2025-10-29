@@ -42,10 +42,10 @@ static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
 
 using namespace GarrysMod::Lua;
 
-LUA_FUNCTION(CrashTest) {
-    *(int*)0 = 0;
-    return 0;
-}
+// LUA_FUNCTION(CrashTest) {
+//     *(int*)0 = 0;
+//     return 0;
+// }
 
 LUA_FUNCTION(SetupCrashDumps) {
     AddVectoredExceptionHandler(1, DumpHandler);
@@ -54,8 +54,8 @@ LUA_FUNCTION(SetupCrashDumps) {
 
 GMOD_MODULE_OPEN() {
     LUA->PushSpecial(SPECIAL_GLOB);
-    LUA->PushCFunction(CrashTest);
-    LUA->SetField(-2, "CrashTest");
+    // LUA->PushCFunction(CrashTest);
+    // LUA->SetField(-2, "CrashTest");
     LUA->PushCFunction(SetupCrashDumps);
     LUA->SetField(-2, "SetupCrashDumps");
     LUA->Pop();
