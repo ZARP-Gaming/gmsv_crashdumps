@@ -12,7 +12,8 @@ if ($index -ne -1) {
 Set-Content $studioFile -Value $studioContent
 
 $premakeFile = '.\garrysmod_common\premake\generator.lua'
-$premakeContent = Get-Content $premakeFile | ForEach-Object {
-    if ($_ -match '^\s*linktimeoptimization\s*\(\s*\)') { '--' + $_ } else { $_ }
-}
+(Get-Content $premakeFile) | ForEach-Object {
+    if ($_ -match 'linktimeoptimization\s*\(') { '--' + $_ } else { $_ }
+} | Set-Content $premakeFile
+
 Set-Content $premakeFile -Value $premakeContent
