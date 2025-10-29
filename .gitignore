@@ -1,0 +1,10 @@
+*
+/**
+!*/
+!README.md
+!premake5.lua
+!source/**
+!.gitignore
+!.github/**
+!build_fix.ps1
+garrysmod_common/

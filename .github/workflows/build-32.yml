@@ -1,0 +1,42 @@
+name: Build x32
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Clone garrysmod_common with Submodules
+        run: |
+          git clone -support-sourcesdk --recursive https://github.com/danielga/garrysmod_common.git garrysmod_common
+
+      - name: Download and Extract Premake
+        run: |
+          curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-beta3/premake-5.0.0-beta3-windows.zip -o premake.zip
+          tar -xf premake.zip -C $PWD
+
+      - name: Generate Visual Studio Project Files
+        run: .\premake5.exe --os=windows --gmcommon=./garrysmod_common vs2022
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build 32-bit DLL
+        run: |
+          msbuild .\projects\windows\vs2022\crashdumps.sln /p:Configuration=Release
+
+      - name: Save Built DLL for Download
+        uses: actions/upload-artifact@v3
+        with:
+          name: gmsv_crashdumps_win32
+          path: .\projects\windows\vs2022\x86\Release\gmsv_crashdumps_win32.dll
