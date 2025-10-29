@@ -10,11 +10,6 @@ local gmcommon = assert(_OPTIONS.gmcommon or os.getenv("GARRYSMOD_COMMON"),
   "you didn't provide a path to your garrysmod_common (https://github.com/danielga/garrysmod_common) directory")
 
 include(gmcommon)
-for k, v in pairs(_G) do
-  if type(v) == "function" then
-    print(k)
-  end
-end
 
 CreateWorkspace({name = "crashdumps", abi_compatible = false, path = "projects/" .. os.target() .. "/" .. _ACTION})
 
