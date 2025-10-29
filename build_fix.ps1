@@ -1,13 +1,18 @@
-$file = '.\garrysmod_common\sourcesdk-minimal\public\studio.h'
+$studioFile = '.\garrysmod_common\sourcesdk-minimal\public\studio.h'
 $lineToFind = '#include "utlsymbol.h"'
 $contentToAdd = 'inline int max(int a, int b) { return (a > b) ? a : b; }'
 
-$fileContent = Get-Content $file
-$index = $fileContent.IndexOf($lineToFind)
-
+$studioContent = Get-Content $studioFile
+$index = $studioContent.IndexOf($lineToFind)
 if ($index -ne -1) {
-    $before = $fileContent[0..$index]
-    $after = $fileContent[($index + 1)..($fileContent.Length - 1)]
-    $fileContent = $before + $contentToAdd + $after
-    Set-Content $file -Value $fileContent
+    $before = $studioContent[0..$index]
+    $after = $studioContent[($index + 1)..($studioContent.Length - 1)]
+    $studioContent = $before + $contentToAdd + $after
 }
+Set-Content $studioFile -Value $studioContent
+
+$premakeFile = '.\garrysmod_common\premake\generator.lua'
+$premakeContent = Get-Content $premakeFile | ForEach-Object {
+    if ($_ -match '^\s*linktimeoptimization\s*\(\s*\)') { '--' + $_ } else { $_ }
+}
+Set-Content $premakeFile -Value $premakeContent
