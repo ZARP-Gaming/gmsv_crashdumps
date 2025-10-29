@@ -25,6 +25,12 @@ jobs:
           curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-beta3/premake-5.0.0-beta3-windows.zip -o premake.zip
           tar -xf premake.zip -C $PWD
 
+      - name: Run PowerShell Script
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+          .\build_fix.ps1
+
       - name: Generate Visual Studio Project Files
         run: .\premake5.exe --os=windows --gmcommon=./garrysmod_common vs2022
 
