@@ -20,6 +20,20 @@ static BOOL EnsureDbgHelp()
 static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
 {
     if (InterlockedCompareExchange(&g_dump_written, 1, 0) != 0) return EXCEPTION_CONTINUE_SEARCH;
+    if (!info || !info->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
+
+    DWORD code = info->ExceptionRecord->ExceptionCode;
+    if (code != EXCEPTION_ACCESS_VIOLATION &&
+        code != EXCEPTION_STACK_OVERFLOW &&
+        code != EXCEPTION_INT_DIVIDE_BY_ZERO &&
+        code != EXCEPTION_ILLEGAL_INSTRUCTION &&
+        code != EXCEPTION_DATATYPE_MISALIGNMENT &&
+        code != EXCEPTION_ARRAY_BOUNDS_EXCEEDED &&
+        code != EXCEPTION_FLT_DIVIDE_BY_ZERO &&
+        code != EXCEPTION_FLT_INVALID_OPERATION &&
+        code != EXCEPTION_PRIV_INSTRUCTION)
+        return EXCEPTION_CONTINUE_SEARCH;
+
     if (!EnsureDbgHelp()) return EXCEPTION_CONTINUE_SEARCH;
     if (!pMiniDumpWriteDump) pMiniDumpWriteDump = (MiniDumpWriteDump_t)GetProcAddress(g_dbghelp, "MiniDumpWriteDump");
     if (!pMiniDumpWriteDump) return EXCEPTION_CONTINUE_SEARCH;
@@ -37,15 +51,18 @@ static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
         pMiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, dtype, &dumpInfo, nullptr, nullptr);
         CloseHandle(hFile);
     }
+
+	printf("[CrashDumps] Dump written to %s\n", fname.str().c_str());
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+
 using namespace GarrysMod::Lua;
 
-// LUA_FUNCTION(CrashTest) {
-//     *(int*)0 = 0;
-//     return 0;
-// }
+ //LUA_FUNCTION(CrashTest) {
+ //    *(int*)0 = 0;
+ //    return 0;
+ //}
 
 LUA_FUNCTION(SetupCrashDumps) {
     AddVectoredExceptionHandler(1, DumpHandler);
@@ -54,8 +71,8 @@ LUA_FUNCTION(SetupCrashDumps) {
 
 GMOD_MODULE_OPEN() {
     LUA->PushSpecial(SPECIAL_GLOB);
-    // LUA->PushCFunction(CrashTest);
-    // LUA->SetField(-2, "CrashTest");
+    //LUA->PushCFunction(CrashTest);
+    //LUA->SetField(-2, "CrashTest");
     LUA->PushCFunction(SetupCrashDumps);
     LUA->SetField(-2, "SetupCrashDumps");
     LUA->Pop();
