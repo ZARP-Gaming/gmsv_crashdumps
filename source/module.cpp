@@ -7,6 +7,7 @@
 
 static HMODULE g_dbghelp = nullptr;
 static volatile LONG g_dump_written = 0;
+static PVOID g_handler = nullptr;
 typedef BOOL(WINAPI* MiniDumpWriteDump_t)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION, PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
 static MiniDumpWriteDump_t pMiniDumpWriteDump = nullptr;
 
@@ -52,27 +53,20 @@ static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
         CloseHandle(hFile);
     }
 
-	printf("[CrashDumps] Dump written to %s\n", fname.str().c_str());
+    printf("[CrashDumps] Dump written to %s\n", fname.str().c_str());
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-
 using namespace GarrysMod::Lua;
 
- //LUA_FUNCTION(CrashTest) {
- //    *(int*)0 = 0;
- //    return 0;
- //}
-
 LUA_FUNCTION(SetupCrashDumps) {
-    AddVectoredExceptionHandler(1, DumpHandler);
+    if (!g_handler)
+        g_handler = AddVectoredExceptionHandler(1, DumpHandler);
     return 0;
 }
 
 GMOD_MODULE_OPEN() {
     LUA->PushSpecial(SPECIAL_GLOB);
-    //LUA->PushCFunction(CrashTest);
-    //LUA->SetField(-2, "CrashTest");
     LUA->PushCFunction(SetupCrashDumps);
     LUA->SetField(-2, "SetupCrashDumps");
     LUA->Pop();
@@ -80,5 +74,15 @@ GMOD_MODULE_OPEN() {
 }
 
 GMOD_MODULE_CLOSE() {
+    if (g_handler) {
+        RemoveVectoredExceptionHandler(g_handler);
+        g_handler = nullptr;
+    }
+    g_dump_written = 0;
+    if (g_dbghelp) {
+        FreeLibrary(g_dbghelp);
+        g_dbghelp = nullptr;
+        pMiniDumpWriteDump = nullptr;
+    }
     return 0;
 }
