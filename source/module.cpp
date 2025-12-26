@@ -8,6 +8,7 @@
 static HMODULE g_dbghelp = nullptr;
 static volatile LONG g_dump_written = 0;
 static PVOID g_handler = nullptr;
+static volatile LONG g_active = 0;
 typedef BOOL(WINAPI* MiniDumpWriteDump_t)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION, PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
 static MiniDumpWriteDump_t pMiniDumpWriteDump = nullptr;
 
@@ -15,12 +16,14 @@ static BOOL EnsureDbgHelp()
 {
     if (g_dbghelp) return TRUE;
     g_dbghelp = LoadLibraryA("DbgHelp.dll");
-    return g_dbghelp != nullptr;
+    if (!g_dbghelp) return FALSE;
+    pMiniDumpWriteDump = (MiniDumpWriteDump_t)GetProcAddress(g_dbghelp, "MiniDumpWriteDump");
+    return pMiniDumpWriteDump != nullptr;
 }
 
 static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
 {
-    if (InterlockedCompareExchange(&g_dump_written, 1, 0) != 0) return EXCEPTION_CONTINUE_SEARCH;
+    if (!g_active) return EXCEPTION_CONTINUE_SEARCH;
     if (!info || !info->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
 
     DWORD code = info->ExceptionRecord->ExceptionCode;
@@ -35,9 +38,11 @@ static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
         code != EXCEPTION_PRIV_INSTRUCTION)
         return EXCEPTION_CONTINUE_SEARCH;
 
+    if (InterlockedCompareExchange(&g_dump_written, 1, 0) != 0)
+        return EXCEPTION_CONTINUE_SEARCH;
+
     if (!EnsureDbgHelp()) return EXCEPTION_CONTINUE_SEARCH;
-    if (!pMiniDumpWriteDump) pMiniDumpWriteDump = (MiniDumpWriteDump_t)GetProcAddress(g_dbghelp, "MiniDumpWriteDump");
-    if (!pMiniDumpWriteDump) return EXCEPTION_CONTINUE_SEARCH;
+
     std::time_t t = std::time(nullptr);
     std::tm tm; localtime_s(&tm, &t);
     std::ostringstream fname;
@@ -53,15 +58,18 @@ static LONG CALLBACK DumpHandler(PEXCEPTION_POINTERS info)
         CloseHandle(hFile);
     }
 
-    printf("[CrashDumps] Dump written to %s\n", fname.str().c_str());
-    return EXCEPTION_EXECUTE_HANDLER;
+    return EXCEPTION_CONTINUE_SEARCH;
 }
 
 using namespace GarrysMod::Lua;
 
 LUA_FUNCTION(SetupCrashDumps) {
-    if (!g_handler)
+    if (!g_handler) {
+        g_dump_written = 0;
+        g_active = 1;
         g_handler = AddVectoredExceptionHandler(1, DumpHandler);
+		printf("[CrashDumps] Crash dump handler installed.\n");
+    }
     return 0;
 }
 
@@ -74,15 +82,12 @@ GMOD_MODULE_OPEN() {
 }
 
 GMOD_MODULE_CLOSE() {
+    g_active = 0;
     if (g_handler) {
         RemoveVectoredExceptionHandler(g_handler);
         g_handler = nullptr;
+		printf("[CrashDumps] Crash dump handler removed.\n");
     }
     g_dump_written = 0;
-    if (g_dbghelp) {
-        FreeLibrary(g_dbghelp);
-        g_dbghelp = nullptr;
-        pMiniDumpWriteDump = nullptr;
-    }
     return 0;
 }
